@@ -1,9 +1,9 @@
-
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.overall_metric import OverallMetric
 from src.repositories.overall_metrics_repository import (
     OverallMetricRepository,
 )
@@ -35,31 +35,20 @@ class TestOverallMetricRepository(IsolatedAsyncioTestCase):
             "src.repositories.overall_metrics_repository.insert"
         ) as mock_insert:
 
-            # Mock the SQLAlchemy INSERT statement.
             statement = MagicMock()
-
-            # Configure insert().values() to return our statement.
             mock_insert.return_value.values.return_value = statement
 
-            # Mock the excluded fields used during upsert.
             statement.excluded = MagicMock()
-
-            # Configure the upsert operation.
             statement.on_conflict_do_update.return_value = statement
 
             await self.repository.upsert_overall_metrics(metrics)
 
-            # Verify INSERT construction.
             mock_insert.assert_called_once()
-
             mock_insert.return_value.values.assert_called_once_with(
                 metrics
             )
-
-            # Verify ON CONFLICT DO UPDATE.
             statement.on_conflict_do_update.assert_called_once()
 
-            # Verify database execution.
             self.session.execute.assert_awaited_once_with(statement)
 
     async def test_upsert_propagates_database_error(self) -> None:
@@ -74,3 +63,49 @@ class TestOverallMetricRepository(IsolatedAsyncioTestCase):
             await self.repository.upsert_overall_metrics({"id": 1})
 
         self.session.execute.assert_awaited_once()
+
+    async def test_get_overall_metrics_returns_record(self) -> None:
+        expected_metrics = MagicMock(spec=OverallMetric)
+
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = expected_metrics
+
+        self.session.execute.return_value = result
+
+        metrics = await self.repository.get_overall_metrics()
+
+        self.assertIs(metrics, expected_metrics)
+        self.session.execute.assert_awaited_once()
+
+    async def test_get_overall_metrics_returns_none_when_not_found(
+        self,
+    ) -> None:
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = None
+
+        self.session.execute.return_value = result
+
+        metrics = await self.repository.get_overall_metrics()
+
+        self.assertIsNone(metrics)
+        self.session.execute.assert_awaited_once()
+
+    async def test_get_overall_metrics_propagates_database_error(
+        self,
+    ) -> None:
+        self.session.execute.side_effect = RuntimeError(
+            "Database query failed"
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Database query failed",
+        ):
+            await self.repository.get_overall_metrics()
+
+        self.session.execute.assert_awaited_once()
+
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main()

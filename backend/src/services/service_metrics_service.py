@@ -11,6 +11,7 @@ from src.core.constants import (
     SUCCESS_STATUS_MIN,
 )
 from src.core.logger import get_logger
+from src.models.service_metric import ServiceMetric
 from src.repositories.service_metrics_repository import ServiceMetricRepository
 from src.utils.metrics_helpers import (
     calculate_availability,
@@ -215,3 +216,6 @@ class ServiceMetricsService:
         )
 
         return service_metrics
+
+    async def get_all_service_metrics(self) -> list[ServiceMetric]:
+        return await self.repository.get_all_service_metrics()

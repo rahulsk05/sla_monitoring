@@ -1,4 +1,3 @@
-
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,7 +15,6 @@ class TestServiceMetricRepository(IsolatedAsyncioTestCase):
         self.session = AsyncMock(spec=AsyncSession)
         self.repository = ServiceMetricRepository(self.session)
 
-    
     async def test_upsert_service_metrics(self) -> None:
         metrics = [
             {
@@ -42,10 +40,7 @@ class TestServiceMetricRepository(IsolatedAsyncioTestCase):
             "src.repositories.service_metrics_repository.insert"
         ) as mock_insert:
 
-            # Mock SQLAlchemy statement.
             statement = MagicMock()
-
-            # insert().values() returns the statement.
             mock_insert.return_value.values.return_value = statement
 
             statement.excluded = MagicMock()
@@ -54,15 +49,12 @@ class TestServiceMetricRepository(IsolatedAsyncioTestCase):
             await self.repository.upsert_service_metrics(metrics)
 
             mock_insert.assert_called_once()
-
             mock_insert.return_value.values.assert_called_once_with(
                 metrics
             )
-
             statement.on_conflict_do_update.assert_called_once()
 
             self.session.execute.assert_awaited_once_with(statement)
-
 
     async def test_upsert_service_metrics_with_multiple_services(
         self,
@@ -75,20 +67,27 @@ class TestServiceMetricRepository(IsolatedAsyncioTestCase):
         with patch(
             "src.repositories.service_metrics_repository.insert"
         ) as mock_insert:
+
             statement = mock_insert.return_value
-            statement.excluded = AsyncMock()
+            statement.excluded = MagicMock()
             statement.on_conflict_do_update.return_value = statement
 
             await self.repository.upsert_service_metrics(metrics)
 
-            self.assertEqual(mock_insert.call_args.args[0], ServiceMetric)
+            self.assertEqual(
+                mock_insert.call_args.args[0],
+                ServiceMetric,
+            )
             self.assertEqual(
                 len(mock_insert.return_value.values.call_args.args[0]),
                 2,
             )
+
             self.session.execute.assert_awaited_once()
 
-    async def test_upsert_service_metrics_with_empty_list(self) -> None:
+    async def test_upsert_service_metrics_with_empty_list(
+        self,
+    ) -> None:
         await self.repository.upsert_service_metrics([])
 
         self.session.execute.assert_not_awaited()
@@ -109,3 +108,61 @@ class TestServiceMetricRepository(IsolatedAsyncioTestCase):
             )
 
         self.session.execute.assert_awaited_once()
+
+    async def test_get_all_service_metrics_returns_records(
+        self,
+    ) -> None:
+        expected_metrics = [
+            MagicMock(spec=ServiceMetric),
+            MagicMock(spec=ServiceMetric),
+            MagicMock(spec=ServiceMetric),
+        ]
+
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = expected_metrics
+
+        self.session.execute.return_value = result
+
+        metrics = await self.repository.get_all_service_metrics()
+
+        self.assertEqual(len(metrics), 3)
+        self.assertEqual(metrics, expected_metrics)
+
+        # Verify ORM objects are returned directly without mapping.
+        for actual, expected in zip(metrics, expected_metrics):
+            self.assertIs(actual, expected)
+
+        self.session.execute.assert_awaited_once()
+
+    async def test_get_all_service_metrics_returns_empty_list(
+        self,
+    ) -> None:
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = []
+
+        self.session.execute.return_value = result
+
+        metrics = await self.repository.get_all_service_metrics()
+
+        self.assertEqual(metrics, [])
+        self.session.execute.assert_awaited_once()
+
+    async def test_get_all_service_metrics_propagates_database_error(
+        self,
+    ) -> None:
+        self.session.execute.side_effect = RuntimeError(
+            "Database query failed"
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Database query failed",
+        ):
+            await self.repository.get_all_service_metrics()
+
+        self.session.execute.assert_awaited_once()
+
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main()

@@ -1,6 +1,7 @@
 
 from collections.abc import Mapping
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,3 +51,24 @@ class OverallMetricRepository:
         await self.session.execute(statement)
 
         logger.info("Overall metrics upsert completed successfully.")
+
+    async def get_overall_metrics(
+        self,
+    ) -> OverallMetric | None:
+        """Retrieve the overall dashboard metrics record."""
+
+        statement = select(OverallMetric).where(
+            OverallMetric.id == 1
+        )
+
+        result = await self.session.execute(statement)
+
+        metrics = result.scalar_one_or_none()
+
+        if metrics is None:
+            logger.info("Overall metrics record not found.")
+            return None
+
+        logger.info("Overall metrics record retrieved successfully.")
+
+        return metrics

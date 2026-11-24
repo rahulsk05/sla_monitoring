@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import settings
 from src.core.constants import OVERALL_METRICS_ID
 from src.core.logger import get_logger
+from src.models.overall_metric import OverallMetric
 from src.repositories.overall_metrics_repository import OverallMetricRepository
 from src.utils.metrics_helpers import (
     calculate_availability,
@@ -139,3 +140,6 @@ class OverallMetricsService:
         )
 
         return overall_metrics
+
+    async def get_overall_metrics(self) -> OverallMetric | None:
+        return await self.repository.get_overall_metrics()

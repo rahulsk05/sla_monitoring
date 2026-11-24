@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.overall_metric import OverallMetric
 from src.services.overall_metrics_service import OverallMetricsService
 
 
@@ -224,6 +225,36 @@ class TestOverallMetricsPersistence(IsolatedAsyncioTestCase):
         self.service.repository.upsert_overall_metrics.assert_awaited_once_with(
             self.expected_metrics
         )
+
+    async def test_get_overall_metrics_returns_repository_result(self) -> None:
+        overall_metrics = MagicMock(spec=OverallMetric)
+        self.service.repository.get_overall_metrics = AsyncMock(
+            return_value=overall_metrics
+        )
+
+        result = await self.service.get_overall_metrics()
+
+        self.assertIs(result, overall_metrics)
+        self.service.repository.get_overall_metrics.assert_awaited_once()
+
+
+    async def test_get_overall_metrics_returns_none_when_not_found(self) -> None:
+        self.service.repository.get_overall_metrics = AsyncMock(
+            return_value=None
+        )
+
+        result = await self.service.get_overall_metrics()
+
+        self.assertIsNone(result)
+
+
+    async def test_get_overall_metrics_propagates_repository_error(self) -> None:
+        self.service.repository.get_overall_metrics = AsyncMock(
+            side_effect=RuntimeError("Database error")
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "Database error"):
+            await self.service.get_overall_metrics()
 
 
 if __name__ == "__main__":

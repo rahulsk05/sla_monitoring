@@ -1,6 +1,7 @@
 
 import asyncio
 from logging.config import fileConfig
+import sys
 
 from alembic import context
 from sqlalchemy import pool
@@ -66,7 +67,17 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    asyncio.run(run_async_migrations())
+    if sys.platform == "win32":
+        loop = asyncio.SelectorEventLoop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            loop.run_until_complete(run_async_migrations())
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+    else:
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

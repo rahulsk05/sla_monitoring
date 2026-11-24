@@ -1,10 +1,12 @@
-from collections.abc import Mapping, Sequence
 
-from sqlalchemy import select
+from collections.abc import Mapping, Sequence
+from datetime import date, datetime, time, timedelta, timezone
+
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.constants import UPLOAD_CHUNK_INSERT_SIZE
+from src.core.constants import LOGS_PAGE_SIZE, UPLOAD_CHUNK_INSERT_SIZE
 from src.core.logger import get_logger
 from src.models.monitoring_log import MonitoringLog
 
@@ -32,7 +34,9 @@ class MonitoringLogRepository:
         """
 
         if not records:
-            logger.info("Monitoring log insertion skipped: no records provided.")
+            logger.info(
+                "Monitoring log insertion skipped: no records provided."
+            )
             return 0
 
         inserted_count = 0
@@ -53,11 +57,23 @@ class MonitoringLogRepository:
 
             statement = statement.on_conflict_do_nothing(
                 index_elements=[MonitoringLog.record_hash],
+            ).returning(
+                MonitoringLog.record_hash
             )
 
             result = await self.session.execute(statement)
 
-            inserted_count += result.rowcount or 0
+            # RETURNING provides only records that were actually inserted.
+            batch_inserted_count = len(result.scalars().all())
+
+            inserted_count += batch_inserted_count
+
+            logger.debug(
+                "Monitoring log batch processed. "
+                "Batch size: %d, Inserted: %d",
+                len(batch),
+                batch_inserted_count,
+            )
 
         duplicate_count = len(records) - inserted_count
 
@@ -100,3 +116,86 @@ class MonitoringLogRepository:
         )
 
         return records
+
+    async def get_monitoring_logs(
+        self,
+        page: int,
+        date_filter: date | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        service_id: str | None = None,
+        agent: str | None = None,
+    ) -> tuple[list[MonitoringLog], int]:
+        """Retrieve a filtered, paginated list of monitoring logs."""
+
+        filters = []
+
+        if date_filter is not None:
+            start_datetime = datetime.combine(
+                date_filter,
+                time.min,
+                tzinfo=timezone.utc,
+            )
+            end_datetime = start_datetime + timedelta(days=1)
+
+            filters.extend([
+                MonitoringLog.observed_at >= start_datetime,
+                MonitoringLog.observed_at < end_datetime,
+            ])
+
+        elif start_date is not None and end_date is not None:
+            start_datetime = datetime.combine(
+                start_date,
+                time.min,
+                tzinfo=timezone.utc,
+            )
+            end_datetime = datetime.combine(
+                end_date + timedelta(days=1),
+                time.min,
+                tzinfo=timezone.utc,
+            )
+
+            filters.extend([
+                MonitoringLog.observed_at >= start_datetime,
+                MonitoringLog.observed_at < end_datetime,
+            ])
+
+        if service_id is not None:
+            filters.append(MonitoringLog.service_id == service_id)
+
+        if agent is not None:
+            filters.append(MonitoringLog.agent == agent)
+
+        count_statement = (
+            select(func.count())
+            .select_from(MonitoringLog)
+            .where(*filters)
+        )
+
+        count_result = await self.session.execute(count_statement)
+        total_records = count_result.scalar_one()
+
+        offset = (page - 1) * LOGS_PAGE_SIZE
+
+        logs_statement = (
+            select(MonitoringLog)
+            .where(*filters)
+            .order_by(
+                MonitoringLog.observed_at.desc(),
+                MonitoringLog.id.desc(),
+            )
+            .offset(offset)
+            .limit(LOGS_PAGE_SIZE)
+        )
+
+        logs_result = await self.session.execute(logs_statement)
+        logs = list(logs_result.scalars().all())
+
+        logger.info(
+            "Retrieved monitoring logs. Page: %d, Records: %d, Total: %d",
+            page,
+            len(logs),
+            total_records,
+        )
+
+        return logs, total_records

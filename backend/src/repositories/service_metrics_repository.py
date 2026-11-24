@@ -1,6 +1,7 @@
 
 from collections.abc import Mapping, Sequence
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,3 +65,24 @@ class ServiceMetricRepository:
             "Service metrics upsert completed successfully. Services: %d",
             len(records),
         )
+
+    async def get_all_service_metrics(
+        self,
+    ) -> list[ServiceMetric]:
+        """Retrieve all service-level metrics."""
+
+        statement = (
+            select(ServiceMetric)
+            .order_by(ServiceMetric.service_id.asc())
+        )
+
+        result = await self.session.execute(statement)
+
+        service_metrics = list(result.scalars().all())
+
+        logger.info(
+            "Retrieved service metrics. Services: %d",
+            len(service_metrics),
+        )
+
+        return service_metrics
