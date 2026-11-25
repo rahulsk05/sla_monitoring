@@ -7,10 +7,11 @@ from src.core.constants import FILE_FIELD_NAME
 from src.core.error_handler import handle_exception
 from src.core.exceptions import CSVValidationError
 from src.database.connection import AsyncSessionLocal
+from src.entrypoints.google_cloud.http_adapter import handle_cors
 from src.services.upload_service import UploadService
 
 
-def upload_csv(request: Request):
+def _upload_csv(request: Request):
     """Handle CSV uploads through Google Cloud Functions."""
 
     request_id = uuid.uuid4().hex
@@ -85,3 +86,6 @@ def handle_method_not_allowed():
     response.headers["Allow"] = "POST"
 
     return response, 405
+
+def upload_csv(request: Request):
+    return handle_cors(request, _upload_csv)

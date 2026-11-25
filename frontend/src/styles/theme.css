@@ -1,0 +1,25 @@
+:root {
+  --color-primary: #0b3b70;
+  --color-primary-hover: #082e58;
+
+  --color-background: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #edf2f8;
+
+  --color-text-primary: #172033;
+  --color-text-secondary: #64748b;
+
+  --color-border: #d5dfeb;
+
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  --font-family-base: Arial, sans-serif;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+}

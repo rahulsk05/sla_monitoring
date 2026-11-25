@@ -1,78 +1,85 @@
 
-# ==============================
-# Environment variables / secrets
-# ==============================
+# ==========================================
+# Environment Variables / Secrets
+# ==========================================
 .env
 .env.*
 !.env.example
 
-# ==============================
-# Python - Backend
-# ==============================
+# ==========================================
+# Backend - Python
+# ==========================================
+
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 
 # Virtual environments
-venv/
-.venv/
-env/
+/backend/venv/
+/backend/.venv/
+/backend/env/
 
-# Test and coverage
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
+# Testing and coverage
+/backend/.pytest_cache/
+/backend/.coverage
+/backend/.coverage.*
+/backend/htmlcov/
+/backend/.tox/
+/backend/.nox/
 
 # Python packaging
-build/
-dist/
+/backend/build/
+/backend/dist/
 *.egg-info/
 
-# ==============================
-# Node.js - Frontend
-# ==============================
-node_modules/
-.next/
-.nuxt/
-.output/
-dist/
-build/
-coverage/
+# Deployment artifacts
+/backend/deployment/
 
-# Environment files
-!.env.example
+# ==========================================
+# Frontend - React / Vite / TypeScript
+# ==========================================
 
-# ==============================
+# Dependencies
+/frontend/node_modules/
+
+# Build output
+/frontend/dist/
+/frontend/build/
+/frontend/coverage/
+
+# Vite cache
+/frontend/.vite/
+
+# TypeScript build information
+/frontend/*.tsbuildinfo
+
+# ESLint cache
+/frontend/.eslintcache
+
+# ==========================================
+# Logs
+# ==========================================
+*.log
+logs/
+
+# ==========================================
+# Temporary Files
+# ==========================================
+*.tmp
+*.temp
+
+# ==========================================
 # IDE / Editor
-# ==============================
+# ==========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# ==============================
+# ==========================================
 # Operating System
-# ==============================
+# ==========================================
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# ==============================
-# Logs
-# ==============================
-*.log
-logs/
-
-# ==============================
-# Temporary files
-# ==============================
-*.tmp
-*.temp
-
-# ==============================
-# Deployment Artifacts
-# ==============================
-/backend/deployment/

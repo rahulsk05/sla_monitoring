@@ -2,10 +2,17 @@ import base64
 import uuid
 from collections.abc import Callable, Mapping
 
-from flask import Request, Response
+from flask import Request, Response, make_response
+
+from src.core.config import settings
 
 
 LambdaHandler = Callable[..., object]
+
+HttpHandler = Callable[
+    [Request],
+    Response | tuple[Response, int],
+]
 
 
 def create_lambda_event(request: Request) -> dict[str, object]:
@@ -85,3 +92,72 @@ def handle_http_request(
     )
 
     return create_http_response(lambda_response)
+
+
+def handle_cors(
+    request: Request,
+    handler: HttpHandler,
+) -> Response:
+    """Apply CORS handling to a Google Cloud HTTP function."""
+
+    allowed_origins = {
+        origin.strip()
+        for origin in settings.cors_allowed_origins.split(",")
+        if origin.strip()
+    }
+
+    allowed_methods = {"GET", "POST"}
+    allowed_headers = {"content-type", "authorization"}
+
+    origin = request.headers.get("Origin")
+
+    # Handle browser preflight requests.
+    if request.method == "OPTIONS":
+        if origin not in allowed_origins:
+            return Response(status=403)
+
+        requested_method = request.headers.get(
+            "Access-Control-Request-Method",
+            "",
+        ).upper()
+
+        if requested_method not in allowed_methods:
+            return Response(status=405)
+
+        requested_headers = {
+            header.strip().lower()
+            for header in request.headers.get(
+                "Access-Control-Request-Headers",
+                "",
+            ).split(",")
+            if header.strip()
+        }
+
+        if not requested_headers.issubset(allowed_headers):
+            return Response(status=403)
+
+        response = Response(status=204)
+
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, OPTIONS"
+        )
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, Authorization"
+        )
+        response.headers["Access-Control-Max-Age"] = "600"
+
+        response.vary.add("Origin")
+        response.vary.add("Access-Control-Request-Method")
+        response.vary.add("Access-Control-Request-Headers")
+
+        return response
+
+    # Execute the existing function for normal requests.
+    response = make_response(handler(request))
+
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.vary.add("Origin")
+
+    return response

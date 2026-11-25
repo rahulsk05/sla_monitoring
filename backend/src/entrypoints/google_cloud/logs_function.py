@@ -9,6 +9,7 @@ from flask import Request, Response, jsonify
 from src.core.error_handler import handle_exception
 from src.core.exceptions import ApplicationError
 from src.database.connection import AsyncSessionLocal
+from src.entrypoints.google_cloud.http_adapter import handle_cors
 from src.models.monitoring_log import MonitoringLog
 from src.services.monitoring_log_service import MonitoringLogService
 
@@ -156,7 +157,7 @@ def serialize_monitoring_log(
     }
 
 
-def get_logs(request: Request) -> Response | tuple[Response, int]:
+def _get_logs(request: Request) -> Response | tuple[Response, int]:
     request_id = uuid.uuid4().hex
 
     try:
@@ -231,3 +232,6 @@ def get_logs(request: Request) -> Response | tuple[Response, int]:
         )
 
         return jsonify(error_response), status_code
+
+def get_logs(request: Request):
+    return handle_cors(request, _get_logs)

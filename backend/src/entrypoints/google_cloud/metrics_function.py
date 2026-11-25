@@ -7,6 +7,7 @@ from flask import Request, Response, jsonify
 
 from src.core.error_handler import handle_exception
 from src.database.connection import AsyncSessionLocal
+from src.entrypoints.google_cloud.http_adapter import handle_cors
 from src.models.overall_metric import OverallMetric
 from src.models.service_metric import ServiceMetric
 from src.services.metrics_service import MetricsService
@@ -23,7 +24,7 @@ def serialize_model(
     }
 
 
-def get_metrics(request: Request) -> Response | tuple[Response, int]:
+def _get_metrics(request: Request) -> Response | tuple[Response, int]:
     request_id = uuid.uuid4().hex
 
     try:
@@ -84,3 +85,6 @@ def get_metrics(request: Request) -> Response | tuple[Response, int]:
         )
 
         return jsonify(error_response), status_code
+
+def get_metrics(request: Request):
+    return handle_cors(request, _get_metrics)
